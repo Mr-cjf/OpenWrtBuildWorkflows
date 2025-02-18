@@ -24,13 +24,10 @@ env:
   REPO_NAME: openwrt
   REPO_URL: https://github.com/openwrt/openwrt.git
   REPO_BRANCH: openwrt-24.10
-  BUILD_DEPENDS: "ack antlr3 aria2 asciidoc autoconf automake autopoint binutils bison btrfs-progs build-essential bzip2 \
-   ca-certificates ccache cmake coreutils cpio curl clang device-tree-compiler fastjar flex g++-multilib gawk gcc-multilib \
-    gettext git git-core gperf gzip haveged help2man intltool jq libc6-dev-i386 libelf-dev libfuse-dev libglib2.0-dev \
-     libgmp3-dev libltdl-dev libmpc-dev libmpfr-dev libncurses5-dev libncursesw5-dev libpython3-dev libreadline-dev \ 
-      libssl-dev libtool libz-dev lrzsz llvm mkisofs msmtp nano ninja-build npm p7zip p7zip-full patch pigz pkgconf \
-       python2.7 python3 python3-pip python3-pyelftools python3-setuptools qemu-utils rsync scons squashfs-tools \
-        swig tar texinfo uglifyjs unzip upx upx-ucl vim wget xmlto xsltproc xxd xz-utils yasm zip zlib1g-dev zstd mkisofs"
+  BUILD_DEPENDS: "libncurses-dev gawk flex quilt libssl-dev rsync \
+    zlib1g-dev unzip time bc bison gcc-multilib g++-multilib \
+    gettext texinfo u-boot-tools cpio dosfstools kmod \
+    libelf-dev libssl-dev pkg-config device-tree-compiler"
   # CONFIG_FILE 是你自己的编译配置文件的名称，你应该将这些文件上传到工作流仓库的根目录。
   CONFIG_FILE: example.config
   # CUSTOM_SCRIPT_1 是你在更新和安装 feeds 之前要执行的额外 Bash 脚本的名称。
@@ -110,7 +107,8 @@ jobs:
           # 添加官方源和必要的第三方源
           echo "deb http://archive.ubuntu.com/ubuntu $(lsb_release -sc) main universe multiverse" | sudo tee /etc/apt/sources.list
           echo "deb http://archive.ubuntu.com/ubuntu $(lsb_release -sc)-updates main universe multiverse" | sudo tee -a /etc/apt/sources.list
-          sudo -E apt-get -y update
+          sudo -E apt update -y 
+          sudo -E apt upgrade -y
           sudo -E apt-get -y purge azure-cli ghc* zulu* llvm* firefox google* dotnet* powershell openjdk* mongodb* moby* || true
           sudo -E apt-get -y install $BUILD_DEPENDS
           sudo -E apt-get -y autoremove --purge
