@@ -1,37 +1,24 @@
-## Workflows for building OpenWrt firmware
+## OpenWrt 固件构建工作流
 
-This repository is improved base on **[P3TERX/Actions-OpenWrt](https://github.com/P3TERX/Actions-OpenWrt)**. Since the original repository has been archived and cannot submit PR, it is provided as a new repository.
-
-- - -
-
-This project fixes some functional failures caused by the upgrade of GitHub permission system in the original project, and improves the function of automatic compilation of source code update. Workflows in this repository does not need additional tokens.
-
-**2023/2/16:** Fully refactored, solve a lot of old problems, improve safety and reliability.
-
-**2023/3/10:** Delete the feature of loading `feeds.conf.default`, because it is easy to inadvertently cause problems when compiling source code of non-default branch or hash. 
-               Specifically, feeds that depend on the source code of a particular branch or hash also need to specify a branch or hash. At this point, if we still use file overwriting to introduce custom feeds, we must be careful that the branch or hash information of the original base feed is overwritten and lost. 
-               Therefore, the alternative is to use `CUSTOM_SCRIPT_1` to modify the `feeds.conf.default`. Please check the comments in `example-custom-script-1.sh` for details.
+本仓库是在 **[P3TERX/Actions-OpenWrt](https://github.com/P3TERX/Actions-OpenWrt)** 的基础上改进的。由于原仓库已归档且无法提交PR，因此提供了一个新的仓库。
 
 - - -
 
-### Usage:
+本项目修复了由于GitHub权限系统升级导致的原项目中的某些功能故障，并改进了自动编译源代码更新的功能。本仓库中的工作流不需要额外的令牌。
 
-1. Generate your workflow repo from this repository, and generate workflow file from `template.yaml`. You can rename the copy of `template.yaml` to any name you want, but remember that the file extension must be `.yaml` or `.yml`. 
+**2023/2/16:** 完全重构，解决了许多旧问题，提高了安全性和可靠性。
 
-2. In your workflow file, modify the content according to the annotations.  
-3. Then you can startup the workflow manually or regularly. 
-   + Select the workflow name on the Actions page to run it manually.
-   + For run regularly, you need to uncomment:
-     ```
-     schedule:
-       - cron: 0 */18 * * *
-     ```
-     There you can use your own cron expression to start the workflow as needed.
-
-Each time this workflow runs, it will check whether the specified repository is updated. If the source code is updated, it will start compiling the new firmware.  
-Whether the workflow is started manually or regularly, the compilation will only be triggered when the source code is updated. However, during manual startup, you can force firmware compilation by entering `true` in `Build new firmware anyway`.
+**2023/3/10:** 删除了加载 `feeds.conf.default` 的功能，因为在编译非默认分支或哈希的源代码时，这很容易无意中导致问题。
+               具体来说，依赖于特定分支或哈希的源代码的源feeds也需要指定分支或哈希。此时，如果我们仍然使用文件覆盖的方式引入自定义feeds，我们必须小心不要覆盖和丢失原始基础feed的分支或哈希信息。
+               因此，替代方案是使用 `CUSTOM_SCRIPT_1` 来修改 `feeds.conf.default`。请参阅 `example-custom-script-1.sh` 中的注释以获取详细信息。
 
 - - -
 
-### Copyright:
-MIT Licence © 2022~2023 Curious <https://curious.host>  
+### 使用方法:
+
+1. 从本仓库生成您的工作流仓库，并从 `template.yaml` 生成工作流文件。您可以将 `template.yaml` 的副本重命名为任何名称，但请记住文件扩展名必须为 `.yaml` 或 `.yml`。
+
+2. 在您的工作流文件中，根据注释修改内容。
+3. 然后您可以手动或定期启动工作流。
+   + 在 Actions 页面选择工作流名称以手动运行。
+   + 为了定期运行，您需要取消注释：
