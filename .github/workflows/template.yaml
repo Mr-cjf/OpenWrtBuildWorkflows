@@ -1,99 +1,84 @@
-#
-# Copyright (c) 2022-2023 Curious <https://www.curious.host>
-#
-# This is free software, licensed under the MIT License.
-# See /LICENSE for more information.
-# 
-# https://github.com/Curious-r/OpenWrtBuildWorkflows
-# Description: Automatically check OpenWrt source code update and build it. No additional keys are 
-# required.
-#
-# Some features come from https://github.com/P3TERX/Actions-OpenWrt, visit the repository to get its 
-# copyright information.
-#-------------------------------------------------------------------------------------------------------
+# GitHub Actions 工作流配置文件
 
-# Workflow name which is showed in GitHub Actions.
-name: Build Example-Firmware for Example-Device
+# 工作流名称，显示在 GitHub Actions 中。
+name: 构建示例固件用于示例设备
 
 on:
   workflow_dispatch:
     inputs:
       force-build:
-        description: "Build new firmware anyway"
+        description: "无论如何构建新固件"
         required: false
         default: "false"
       ssh:
-        description: "SSH connection to Actions"
+        description: "连接到 Actions 的 SSH"
         required: false
         default: "false"
-# Uncomment the following to run regularly. Note that the cron expression here does not contain seconds.
+# 取消注释以下内容以定期运行。注意这里的 cron 表达式不包含秒。
 #  schedule:
 #    - cron: 0 */18 * * *
 
 env:
-  # REPO means the OpenWrt repo you want to build from in this workflow. 
-  # You can modify the REPO_NAME to any name you want, but remember not to let it have the same name in 
-  # other workflows.
-  REPO_NAME: example-name
-  REPO_URL: https://github.com/example/example.git
-  REPO_BRANCH: example-branch
-  BUILD_DEPENDS:  "ack antlr3 asciidoc autoconf automake autopoint binutils bison build-essential \
+  # REPO 表示你想要在此工作流中构建的 OpenWrt 仓库。
+  # 你可以修改 REPO_NAME 为你想要的任何名称，但请确保它与其他工作流中的名称不同。
+  REPO_NAME: openwrt
+  REPO_URL: https://github.com/openwrt/openwrt.git
+  REPO_BRANCH: openwrt-24.10
+  BUILD_DEPENDS: "ack antlr3 asciidoc autoconf automake autopoint binutils bison build-essential \
                    bzip2 ccache cmake cpio curl device-tree-compiler fastjar flex gawk gettext gcc-multilib g++-multilib \
                    git gperf haveged help2man intltool libc6-dev-i386 libelf-dev libfuse-dev libglib2.0-dev libgmp3-dev \
                    libltdl-dev libmpc-dev libmpfr-dev libncurses5-dev libncursesw5-dev libpython3-dev libreadline-dev \
                    libssl-dev libtool lrzsz mkisofs msmtp ninja-build p7zip p7zip-full patch pkgconf python2.7 python3 \
                    python3-pyelftools python3-setuptools qemu-utils rsync scons squashfs-tools subversion swig texinfo \
                    uglifyjs upx-ucl unzip vim wget xmlto xxd zlib1g-dev clang file nano aria2"
-  # CONFIG_FILE is the name of your own config files for compiling, you should upload these files into the root 
-  # directory of your workflow repo.
+  # CONFIG_FILE 是你自己的编译配置文件的名称，你应该将这些文件上传到工作流仓库的根目录。
   CONFIG_FILE: example.config
-  # CUSTOM_SCRIPT_1 is the name of extra bash script you want to execute before feeds update&install.
-  # CUSTOM_SCRIPT_2 is the name of extra bash script you want to execute after feeds update&install.
-  # You can modify the initial settings of your firmware through these two scripts. If this is what you need,
-  # please upload your scripts to the root directory of your workflow repo.
+  # CUSTOM_SCRIPT_1 是你在更新和安装 feeds 之前要执行的额外 Bash 脚本的名称。
+  # CUSTOM_SCRIPT_2 是你在更新和安装 feeds 之后要执行的额外 Bash 脚本的名称。
+  # 如果你需要通过这两个脚本来修改固件的初始设置，请将脚本上传到工作流仓库的根目录。
   CUSTOM_SCRIPT_1: example-custom-script-1.sh
   CUSTOM_SCRIPT_2: example-custom-script-2.sh
-  # STORE_PRODUCTS determine whether to upload all compilation products to workflow artifacts.
-  # Not only firmwires, all compiled packages will be here, including compiled but not solidified into firmware.
+  # STORE_PRODUCTS 确定是否将所有编译产物上传到工作流制品。
+  # 不仅仅是固件，还包括所有编译但未固化到固件中的包。
   STORE_PRODUCTS: false
-  # STORE_FIRMWARE determine whether to upload firmwares to workflow artifacts.
+  # STORE_FIRMWARE 确定是否将固件上传到工作流制品。
   STORE_FIRMWARE: true
-  # The following are options of where the firmware needs to be transfered. 
+  # 以下选项确定固件需要传输的位置。
   COWTRANSFER_FIRMWARE: false
   WETRANSFER_FIRMWARE: false
   RELEASE_FIRMWARE: false
-  # Change the following to your time zone.
+  # 更改为你的时区。
   TIME_ZONE: Asia/Shanghai
 
 jobs:
   check:
-    name: Check for source code updates
+    name: 检查源代码更新
     runs-on: ubuntu-latest
     outputs:
       cache-hit: ${{ steps.cache-hash.outputs.cache-hit }}
 
     steps:
-      - name: Get Commit Hash
+      - name: 获取提交哈希
         id: get-hash
         run: |
           git clone --depth 1 --branch $REPO_BRANCH --single-branch $REPO_URL ./
           echo "commit-hash=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
 
-      - name: Compare Commit Hash
+      - name: 比较提交哈希
         id: cache-hash
         uses: actions/cache@main
         with:
           path: .${{ env.REPO_NAME }}-${{ env.REPO_BRANCH }}-commit-hash
           key: HEAD-${{ steps.get-hash.outputs.commit-hash }}
 
-      - name: Save New Commit Hash
+      - name: 保存新的提交哈希
         if: steps.cache-hash.outputs.cache-hit != 'true'
         run: |
           echo ${{ steps.get-hash.outputs.commit-hash }} | 
             tee .$REPO_NAME-$REPO_BRANCH-commit-hash
 
   build:
-    name: Build firmware
+    name: 构建固件
     runs-on: ubuntu-latest
     needs: check
     permissions:
@@ -101,10 +86,10 @@ jobs:
     if: needs.check.outputs.cache-hit != 'true' || github.event.inputs.force-build == 'true'
 
     steps:
-      - name: Checkout
+      - name: 检出代码
         uses: actions/checkout@main
 
-      - name: Free disk space
+      - name: 释放磁盘空间
         uses: jlumbroso/free-disk-space@main
         with:
           tool-cache: false
@@ -115,7 +100,7 @@ jobs:
           docker-images: true
           swap-storage: false
 
-      - name: Initialization environment
+      - name: 初始化环境
         env:
           DEBIAN_FRONTEND: noninteractive
         run: |
@@ -128,44 +113,44 @@ jobs:
           sudo mkdir -p /workdir/
           sudo chown $USER:$GROUPS /workdir/
 
-      - name: Clone source code
+      - name: 克隆源代码
         working-directory: /workdir
         run: |
           df -hT $PWD
           git clone --depth 1 --branch $REPO_BRANCH --single-branch $REPO_URL openwrt/
           ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
 
-      - name: Run custom-script-1
+      - name: 运行自定义脚本1
         run: |
           chmod +x $CUSTOM_SCRIPT_1
           cd openwrt/
           $GITHUB_WORKSPACE/$CUSTOM_SCRIPT_1
 
-      - name: Update feeds
+      - name: 更新 feeds
         run: cd openwrt/ && ./scripts/feeds update -a
 
-      - name: Install feeds
+      - name: 安装 feeds
         run: cd openwrt/ && ./scripts/feeds install -a
 
-      - name: Load custom configuration
+      - name: 加载自定义配置
         run: |
           [ -e files ] && mv files/ openwrt/files/
           [ -e $CONFIG_FILE ] && mv $CONFIG_FILE openwrt/.config
- 
-      - name: Run custom-script-2
+
+      - name: 运行自定义脚本2
         run: |
           chmod +x $CUSTOM_SCRIPT_2
           cd openwrt/
           $GITHUB_WORKSPACE/$CUSTOM_SCRIPT_2
 
-      - name: SSH connection to Actions
+      - name: SSH 连接到 Actions
         uses: P3TERX/ssh2actions@main
         if: github.event.inputs.ssh == 'true' || contains(github.event.action, 'ssh')
         env:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
 
-      - name: Download packages
+      - name: 下载软件包
         id: download-packages
         run: |
           cd openwrt/
@@ -174,7 +159,7 @@ jobs:
           find dl -size -1024c -exec ls -l {} \;
           find dl -size -1024c -exec rm -f {} \;
 
-      - name: Compile the firmware
+      - name: 编译固件
         id: compile
         run: |
           cd openwrt/
@@ -185,18 +170,18 @@ jobs:
           [ -s DEVICE_NAME ] && echo "DEVICE_NAME=_$(cat DEVICE_NAME)" >> $GITHUB_ENV
           echo "FILE_DATE=_$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
 
-      - name: Check space usage
+      - name: 检查空间使用情况
         if: (!cancelled())
         run: df -hT
 
-      - name: Upload all compilation products
+      - name: 上传所有编译产物
         uses: actions/upload-artifact@main
         if: steps.compile.outputs.status == 'success' && env.STORE_PRODUCTS == 'true'
         with:
           name: OpenWrt_bin${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
           path: openwrt/bin/
 
-      - name: Organize firmware-related files
+      - name: 组织固件相关文件
         id: organize-files
         run: |
           cd openwrt/bin/targets/*/*
@@ -204,14 +189,14 @@ jobs:
           echo "FIRMWARE=$PWD" >> $GITHUB_ENV
           echo "status=success" >> $GITHUB_OUTPUT
 
-      - name: Upload firmware directory
+      - name: 上传固件目录
         uses: actions/upload-artifact@main
         if: steps.organize-files.outputs.status == 'success' && env.STORE_FIRMWARE == 'true' && !cancelled()
         with:
           name: OpenWrt_firmware${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
           path: ${{ env.FIRMWARE }}
 
-      - name: Upload firmware to cowtransfer
+      - name: 上传固件到 Cowtransfer
         id: cowtransfer
         if: steps.organize-files.outputs.status == 'success' && env.COWTRANSFER_FIRMWARE == 'true' && !cancelled()
         run: |
@@ -220,7 +205,7 @@ jobs:
           echo "::notice file=cowtransfer.com::$(cat cowtransfer.log | grep https)"
           echo "url=$(cat cowtransfer.log | grep https | cut -f3 -d" ")" >> $GITHUB_OUTPUT
 
-      - name: Upload firmware to WeTransfer
+      - name: 上传固件到 WeTransfer
         id: wetransfer
         if: steps.organize-files.outputs.status == 'success' && env.WETRANSFER_FIRMWARE == 'true' && !cancelled()
         run: |
@@ -229,7 +214,7 @@ jobs:
           echo "::notice file=wetransfer.com::$(cat wetransfer.log | grep https)"
           echo "url=$(cat wetransfer.log | grep https | cut -f3 -d" ")" >> $GITHUB_OUTPUT
 
-      - name: Generate release tag
+      - name: 生成发布标签
         id: tag
         if: env.RELEASE_FIRMWARE == 'true' && !cancelled()
         run: |
@@ -243,7 +228,7 @@ jobs:
             "🔗 [WeTransfer](${{ steps.wetransfer.outputs.url }})" >> release.txt
           echo "status=success" >> $GITHUB_OUTPUT
 
-      - name: Upload firmware to release
+      - name: 上传固件到发布
         uses: softprops/action-gh-release@master
         if: steps.tag.outputs.status == 'success' && !cancelled()
         with:
@@ -252,20 +237,20 @@ jobs:
           files: ${{ env.FIRMWARE }}/*
 
   clean:
-    name: Clean up old assets
+    name: 清理旧资产
     runs-on: ubuntu-latest
     permissions:
       actions: write
       contents: write
 
     steps:
-      - name: Delete workflow runs
+      - name: 删除工作流运行
         uses: Mattraks/delete-workflow-runs@main
         with:
           retain_days: 1
           keep_minimum_runs: 1
 
-      - name: Remove old Releases
+      - name: 移除旧版本
         uses: dev-drprasad/delete-older-releases@master
         if: env.RELEASE_FIRMWARE == 'true' && !cancelled()
         with:

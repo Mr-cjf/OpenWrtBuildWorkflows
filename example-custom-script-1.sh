@@ -1,38 +1,37 @@
 #!/bin/bash
-# Copyright (c) 2022-2023 Curious <https://www.curious.host>
+# 版权所有 (c) 2022-2023 好奇心 <https://www.curious.host>
 #
-# This is free software, licensed under the MIT License.
-# See /LICENSE for more information.
+# 这是自由软件，遵循 MIT 许可证。
+# 请参阅 /LICENSE 获取更多信息。
 # 
 # https://github.com/Curious-r/OpenWrtBuildWorkflows
-# Description: Automatically check OpenWrt source code update and build it. No additional keys are required.
+# 描述: 自动检查 OpenWrt 源代码更新并构建它。无需额外的密钥。
 #-------------------------------------------------------------------------------------------------------
 #
 #
-# This script will run before feeds update, something you want to do at that moment should be written here.
-# A common function of this script is to modify the cloned OpenWrt source code. 
+# 该脚本将在 feeds 更新之前运行，您希望在那一刻执行的操作应写在这里。
+# 该脚本的一个常见功能是修改克隆的 OpenWrt 源代码。
 #
-# For instance, you can edit the feeds.conf.default to induct packages you need.
-# This is followed by some editing examples.
-# # Clear the feeds.conf.default and append the feed sources you need one by one:
+# 例如，您可以编辑 feeds.conf.default 以引入您需要的包。
+# 以下是编辑示例。
+# # 清除 feeds.conf.default 并逐个添加所需的源：
 #cat /dev/null > a.txt
 #echo 'src-git-full packages https://git.openwrt.org/feed/packages.git;openwrt-22.03' >> feeds.conf.default
 #echo 'src-git-full luci https://git.openwrt.org/project/luci.git;openwrt-22.03' >> feeds.conf.default
 #echo 'src-git-full routing https://git.openwrt.org/feed/routing.git;openwrt-22.03' >> feeds.conf.default
 #echo 'src-git-full telephony https://git.openwrt.org/feed/telephony.git;openwrt-22.03' >> feeds.conf.default
-# # Replace a feed source with what you want:
+# # 替换一个源：
 #sed '/feeds-name/'d feeds.conf.default
 #echo 'method feed-name path/URL' >> feeds.conf.default
-# # Uncomment a feed source:
+# # 取消注释一个源：
 #sed -i 's/^#\(.*feed-name\)/\1/' feeds.conf.default
-# # Replace src-git-full with src-git to reduce the depth of cloning:
+# # 将 src-git-full 替换为 src-git 以减少克隆深度：
 #sed -i 's/src-git-full/src-git/g' feeds.conf.default
 #
-# You can also modify the source code by patching.
-# # Here's a template for patching:
+# 您还可以通过打补丁来修改源代码。
+# # 以下是一个补丁模板：
 #touch example.patch
 #cat>example.patch<<EOF
-#patch content
+#补丁内容
 #EOF
 #git apply example.patch
-

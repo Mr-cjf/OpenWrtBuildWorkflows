@@ -1,19 +1,18 @@
 #!/bin/bash
-# Copyright (c) 2022-2023 Curious <https://www.curious.host>
+# 版权所有 (c) 2022-2023 好奇心 <https://www.curious.host>
 #
-# This is free software, licensed under the MIT License.
-# See /LICENSE for more information.
+# 这是自由软件，遵循 MIT 许可证。
+# 请参阅 /LICENSE 获取更多信息。
 # 
 # https://github.com/Curious-r/OpenWrtBuildWorkflows
-# Description: Automatically check OpenWrt source code update and build it. No additional keys are required.
+# 描述: 自动检查 OpenWrt 源代码更新并构建它。无需额外的密钥。
 #-------------------------------------------------------------------------------------------------------
 #
 #
-# Patching is generally recommended.
-# # Here's a template for patching:
+# 通常建议进行补丁。
+# # 以下是一个补丁模板：
 #touch example.patch
 #cat>example.patch<<EOF
-#patch content
+#补丁内容
 #EOF
 #git apply example.patch
-
