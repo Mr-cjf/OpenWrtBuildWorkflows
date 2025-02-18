@@ -86,16 +86,16 @@ jobs:
       - name: 检出代码
         uses: actions/checkout@main
 
-      #      - name: 释放磁盘空间
-      #        uses: jlumbroso/free-disk-space@main
-      #        with:
-      #          tool-cache: false
-      #          android: true
-      #          dotnet: true
-      #          haskell: true
-      #          large-packages: true
-      #          docker-images: true
-      #          swap-storage: false
+      - name: 释放磁盘空间
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: false
 
       - name: 初始化环境
         env:
@@ -109,7 +109,6 @@ jobs:
           echo "deb http://archive.ubuntu.com/ubuntu $(lsb_release -sc)-updates main universe multiverse" | sudo tee -a /etc/apt/sources.list
           sudo -E apt update -y 
           sudo -E apt upgrade -y
-          sudo -E apt-get -y purge azure-cli ghc* zulu* llvm* firefox google* dotnet* powershell openjdk* mongodb* moby* || true
           sudo -E apt-get -y install $BUILD_DEPENDS
           sudo -E apt-get -y autoremove --purge
           sudo -E apt-get -y clean
