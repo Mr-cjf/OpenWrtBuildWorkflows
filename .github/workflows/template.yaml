@@ -104,7 +104,12 @@ jobs:
         env:
           DEBIAN_FRONTEND: noninteractive
         run: |
+          # 清理旧的源列表
           sudo rm -rf /etc/apt/sources.list.d/*
+          
+          # 添加官方源和必要的第三方源
+          echo "deb http://archive.ubuntu.com/ubuntu $(lsb_release -sc) main universe multiverse" | sudo tee /etc/apt/sources.list
+          echo "deb http://archive.ubuntu.com/ubuntu $(lsb_release -sc)-updates main universe multiverse" | sudo tee -a /etc/apt/sources.list
           sudo -E apt-get -y update
           sudo -E apt-get -y purge azure-cli ghc* zulu* llvm* firefox google* dotnet* powershell openjdk* mongodb* moby* || true
           sudo -E apt-get -y install $BUILD_DEPENDS
