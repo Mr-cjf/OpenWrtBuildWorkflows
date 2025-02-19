@@ -43,7 +43,7 @@ env:
   # 以下选项确定固件需要传输的位置。
   COWTRANSFER_FIRMWARE: false
   WETRANSFER_FIRMWARE: false
-  RELEASE_FIRMWARE: false
+  RELEASE_FIRMWARE: true
   # 更改为你的时区。
   TIME_ZONE: Asia/Shanghai
 
@@ -96,6 +96,13 @@ jobs:
           large-packages: true
           docker-images: true
           swap-storage: false
+
+      - name: 合并磁盘空间
+        uses: easimon/maximize-build-space@master
+        with:
+          swap-size-mb: 1024
+          temp-reserve-mb: 100
+          root-reserve-mb: 1024
 
       - name: 初始化环境
         env:
