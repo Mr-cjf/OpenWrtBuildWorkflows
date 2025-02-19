@@ -86,16 +86,16 @@ jobs:
       - name: 检出代码
         uses: actions/checkout@main
 
-      - name: 释放磁盘空间
-        uses: jlumbroso/free-disk-space@main
-        with:
-          tool-cache: false
-          android: true
-          dotnet: true
-          haskell: true
-          large-packages: true
-          docker-images: true
-          swap-storage: false
+      #      - name: 释放磁盘空间
+      #        uses: jlumbroso/free-disk-space@main
+      #        with:
+      #          tool-cache: false
+      #          android: true
+      #          dotnet: true
+      #          haskell: true
+      #          large-packages: true
+      #          docker-images: true
+      #          swap-storage: false
 
       - name: 合并磁盘空间
         uses: easimon/maximize-build-space@master
@@ -104,23 +104,23 @@ jobs:
           temp-reserve-mb: 100
           root-reserve-mb: 1024
 
-      - name: 初始化环境
-        env:
-          DEBIAN_FRONTEND: noninteractive
-        run: |
-          # 清理旧的源列表
-          sudo rm -rf /etc/apt/sources.list.d/*
-          
-          # 添加官方源和必要的第三方源
-          echo "deb http://archive.ubuntu.com/ubuntu $(lsb_release -sc) main universe multiverse" | sudo tee /etc/apt/sources.list
-          echo "deb http://archive.ubuntu.com/ubuntu $(lsb_release -sc)-updates main universe multiverse" | sudo tee -a /etc/apt/sources.list
-          sudo -E apt update -y 
-          sudo -E apt upgrade -y
-          sudo -E apt-get -y install $BUILD_DEPENDS
-          sudo -E apt-get -y autoremove --purge
-          sudo -E apt-get -y clean
-          sudo -E apt-get install -y clang
-          sudo timedatectl set-timezone $TIME_ZONE
+      #      - name: 初始化环境
+      #        env:
+      #          DEBIAN_FRONTEND: noninteractive
+      #        run: |
+      #          # 清理旧的源列表
+      #          sudo rm -rf /etc/apt/sources.list.d/*
+      #
+      #          # 添加官方源和必要的第三方源
+      #          echo "deb http://archive.ubuntu.com/ubuntu $(lsb_release -sc) main universe multiverse" | sudo tee /etc/apt/sources.list
+      #          echo "deb http://archive.ubuntu.com/ubuntu $(lsb_release -sc)-updates main universe multiverse" | sudo tee -a /etc/apt/sources.list
+      #          sudo -E apt update -y
+      #          sudo -E apt upgrade -y
+      #          sudo -E apt-get -y install $BUILD_DEPENDS
+      #          sudo -E apt-get -y autoremove --purge
+      #          sudo -E apt-get -y clean
+      #          sudo -E apt-get install -y clang
+      #          sudo timedatectl set-timezone $TIME_ZONE
 
       - name: 克隆源代码
         run: |
@@ -142,6 +142,9 @@ jobs:
 
       - name: 运行自定义脚本1
         run: |
+          echo "OPENWRT_PATH=$PWD"
+          echo "$GITHUB_WORKSPACE/$CUSTOM_SCRIPT_1"
+          echo "ls"
           chmod +x $GITHUB_WORKSPACE/$CUSTOM_SCRIPT_1
           cd openwrt/
           $GITHUB_WORKSPACE/$CUSTOM_SCRIPT_1
