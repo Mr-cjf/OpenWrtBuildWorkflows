@@ -11,9 +11,15 @@ on:
         required: false
         default: "false"
       ssh:
-        description: "连接到 Actions 的 SSH"
+        description: "连接到Actions的SSH-例如你可以自己构建固件"
         required: false
         default: "false"
+      # 设置固件默认地址
+      ip:
+        description: "固件默认地址 (例如: 192.168.1.1)"
+        required: true  # 如果你希望这是必填项
+        type: string
+        default: "192.168.1.77"  # 可选，默认 IP 地址
 # 取消注释以下内容以定期运行。注意这里的 cron 表达式不包含秒。
 #  schedule:
 #    - cron: 0 */18 * * *
@@ -83,16 +89,16 @@ jobs:
     if: needs.check.outputs.cache-hit != 'true' || github.event.inputs.force-build == 'true'
 
     steps:
-      #      - name: 释放磁盘空间
-      #        uses: jlumbroso/free-disk-space@main
-      #        with:
-      #          tool-cache: false
-      #          android: true
-      #          dotnet: true
-      #          haskell: true
-      #          large-packages: true
-      #          docker-images: true
-      #          swap-storage: false
+      - name: 释放磁盘空间
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: false
 
       - name: 合并磁盘空间
         uses: easimon/maximize-build-space@master
@@ -101,23 +107,23 @@ jobs:
           temp-reserve-mb: 100
           root-reserve-mb: 1024
 
-      #      - name: 初始化环境
-      #        env:
-      #          DEBIAN_FRONTEND: noninteractive
-      #        run: |
-      #          # 清理旧的源列表
-      #          sudo rm -rf /etc/apt/sources.list.d/*
-      #
-      #          # 添加官方源和必要的第三方源
-      #          echo "deb http://archive.ubuntu.com/ubuntu $(lsb_release -sc) main universe multiverse" | sudo tee /etc/apt/sources.list
-      #          echo "deb http://archive.ubuntu.com/ubuntu $(lsb_release -sc)-updates main universe multiverse" | sudo tee -a /etc/apt/sources.list
-      #          sudo -E apt update -y
-      #          sudo -E apt upgrade -y
-      #          sudo -E apt-get -y install $BUILD_DEPENDS
-      #          sudo -E apt-get -y autoremove --purge
-      #          sudo -E apt-get -y clean
-      #          sudo -E apt-get install -y clang
-      #          sudo timedatectl set-timezone $TIME_ZONE
+      - name: 初始化环境
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          # 清理旧的源列表
+          sudo rm -rf /etc/apt/sources.list.d/*
+
+          # 添加官方源和必要的第三方源
+          echo "deb http://archive.ubuntu.com/ubuntu $(lsb_release -sc) main universe multiverse" | sudo tee /etc/apt/sources.list
+          echo "deb http://archive.ubuntu.com/ubuntu $(lsb_release -sc)-updates main universe multiverse" | sudo tee -a /etc/apt/sources.list
+          sudo -E apt update -y
+          sudo -E apt upgrade -y
+          sudo -E apt-get -y install $BUILD_DEPENDS
+          sudo -E apt-get -y autoremove --purge
+          sudo -E apt-get -y clean
+          sudo -E apt-get install -y clang
+          sudo timedatectl set-timezone $TIME_ZONE
 
       - name: 检出代码
         uses: actions/checkout@main
@@ -140,12 +146,6 @@ jobs:
           echo "COMMIT_HASH=$COMMIT_HASH" >> $GITHUB_ENV
           cd ..
 
-      - name: SSH 连接到 Actions
-        uses: P3TERX/ssh2actions@main
-        env:
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-
       - name: 运行自定义脚本1
         run: |
           chmod +x $GITHUB_WORKSPACE/$CUSTOM_SCRIPT_1
@@ -160,9 +160,17 @@ jobs:
 
       - name: 加载自定义配置
         run: |
-          [ -e files ] && mv files/ openwrt/files/
-          [ -e $CONFIG_FILE ] && mv $CONFIG_FILE openwrt/.config
-
+          [ -e files ] && mv $GITHUB_WORKSPACE/files/ openwrt/files/
+          [ -e $CONFIG_FILE ] && mv $GITHUB_WORKSPACE/$CONFIG_FILE openwrt/.config
+          cd openwrt/
+          make defconfig > /dev/null 2>&1
+          SOURCE_REPO="$(echo $REPO_URL | awk -F '/' '{print $(NF)}')"
+          echo "SOURCE_REPO=$SOURCE_REPO" >> $GITHUB_ENV
+          DEVICE_TARGET=$(cat .config | grep CONFIG_TARGET_BOARD | awk -F '"' '{print $2}')
+          echo "DEVICE_TARGET=$DEVICE_TARGET" >> $GITHUB_ENV
+          DEVICE_SUBTARGET=$(cat .config | grep CONFIG_TARGET_SUBTARGET | awk -F '"' '{print $2}')
+          echo "DEVICE_SUBTARGET=$DEVICE_SUBTARGET" >> $GITHUB_ENV
+          sed -i "s/192.168.1.1/$github.event.inputs.ip/g" package/base-files/files/bin/config_generate
       - name: 运行自定义脚本2
         run: |
           chmod +x $GITHUB_WORKSPACE/$CUSTOM_SCRIPT_2
@@ -194,6 +202,7 @@ jobs:
           echo "status=success" >> $GITHUB_OUTPUT
           grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' > DEVICE_NAME
           [ -s DEVICE_NAME ] && echo "DEVICE_NAME=_$(cat DEVICE_NAME)" >> $GITHUB_ENV
+          echo "DATE=$(date +"%Y-%m-%d %H:%M:%S")" >> $GITHUB_ENV
           echo "FILE_DATE=_$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
 
       - name: 检查空间使用情况
@@ -219,7 +228,7 @@ jobs:
         uses: actions/upload-artifact@main
         if: steps.organize-files.outputs.status == 'success' && env.STORE_FIRMWARE == 'true' && !cancelled()
         with:
-          name: OpenWrt_firmware${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
+          name: ${{ env.SOURCE_REPO }}-firmware-${{ env.DEVICE_TARGET }}-${{ env.DEVICE_SUBTARGET }}-${{ env.FILE_DATE }}
           path: ${{ env.FIRMWARE }}
 
       - name: 上传固件到 Cowtransfer
@@ -240,27 +249,29 @@ jobs:
           echo "::notice file=wetransfer.com::$(cat wetransfer.log | grep https)"
           echo "url=$(cat wetransfer.log | grep https | cut -f3 -d" ")" >> $GITHUB_OUTPUT
 
-      - name: 生成发布标签
-        id: tag
-        if: env.RELEASE_FIRMWARE == 'true' && !cancelled()
-        run: |
-          echo "release_tag=$(date +"%Y.%m.%d-%H%M")" >> $GITHUB_OUTPUT
-          touch release.txt
-          echo "Build from $REPO_URL $REPO_BRANCH" >> release.txt
-          [ $COWTRANSFER_FIRMWARE = true -o $WETRANSFER_FIRMWARE = true ] && echo 'Products transfer:' >> release.txt
-          [ $COWTRANSFER_FIRMWARE = true ] && echo \
-            "🔗 [Cowtransfer](${{ steps.cowtransfer.outputs.url }})" >> release.txt
-          [ $WETRANSFER_FIRMWARE = true ] && echo \
-            "🔗 [WeTransfer](${{ steps.wetransfer.outputs.url }})" >> release.txt
-          echo "status=success" >> $GITHUB_OUTPUT
-
-      - name: 上传固件到发布
-        uses: softprops/action-gh-release@master
-        if: steps.tag.outputs.status == 'success' && !cancelled()
+      - name: 上传固件到Release
+        if: steps.organize-files.outputs.status == 'success' && !cancelled()
+        uses: ncipollo/release-action@v1
         with:
-          tag_name: ${{ steps.tag.outputs.release_tag }}
-          body_path: release.txt
-          files: ${{ env.FIRMWARE }}/*
+          name: R${{ env.DATE }} for ${{ env.DEVICE_TARGET }}
+          allowUpdates: true
+          tag: ${{ env.DEVICE_TARGET }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          artifacts: ${{ env.FIRMWARE }}/*
+          body: |
+            **这是为 ${{ env.DEVICE_TARGET }} 编译的OpenWrt固件**
+            ### 📒 固件信息
+            - 💻 平台架构: ${{ env.DEVICE_TARGET }}-${{ env.DEVICE_SUBTARGET }}
+            - ⚽ 固件源码: ${{ env.REPO_URL }}
+            - 💝 源码分支: ${{ env.REPO_BRANCH }}
+            - 🚀 内核版本: ${{ env.KERNEL }}
+            - 🌐 默认地址: ${{ github.event.inputs.ip }}
+            ### 🧊 固件版本
+            - 固件编译前最后一次➦[主源码](${{ env.REPO_URL }})更新记录
+            - ${{ env.COMMIT_AUTHOR }}
+            - ${{ env.COMMIT_DATE }}
+            - ${{ env.COMMIT_MESSAGE }}
+            - ${{ env.COMMIT_HASH }}
 
   clean:
     name: 清理旧资产
