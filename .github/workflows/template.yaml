@@ -139,6 +139,13 @@ jobs:
           COMMIT_HASH=$(git show -s --date=short --format="hash: %H")
           echo "COMMIT_HASH=$COMMIT_HASH" >> $GITHUB_ENV
           cd ..
+          
+      - name: SSH 连接到 Actions
+        uses: P3TERX/ssh2actions@main
+        if: contains(github.event.action, 'ssh')
+        env:
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
 
       - name: 运行自定义脚本1
         run: |
