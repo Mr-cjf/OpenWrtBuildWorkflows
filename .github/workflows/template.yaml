@@ -121,19 +121,28 @@ jobs:
           sudo -E apt-get -y clean
           sudo -E apt-get install -y clang
           sudo timedatectl set-timezone $TIME_ZONE
-          sudo mkdir -p /workdir/
-          sudo chown $USER:$GROUPS /workdir/
 
       - name: 克隆源代码
-        working-directory: /workdir
         run: |
           df -hT $PWD
-          git clone --depth 1 --branch $REPO_BRANCH --single-branch $REPO_URL openwrt/
-          ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
+          git clone --depth 1 --branch $REPO_BRANCH --single-branch $REPO_URL openwrt
+          cd openwrt
+          echo "OPENWRT_PATH=$PWD" >> $GITHUB_ENV
+          COMMIT_AUTHOR=$(git show -s --date=short --format="作者: %an")
+          echo "OPENWRT_PATH=$PWD" >> $GITHUB_ENV
+          COMMIT_AUTHOR=$(git show -s --date=short --format="作者: %an")
+          echo "COMMIT_AUTHOR=$COMMIT_AUTHOR" >> $GITHUB_ENV
+          COMMIT_DATE=$(git show -s --date=short --format="时间: %ci")
+          echo "COMMIT_DATE=$COMMIT_DATE" >> $GITHUB_ENV
+          COMMIT_MESSAGE=$(git show -s --date=short --format="内容: %s")
+          echo "COMMIT_MESSAGE=$COMMIT_MESSAGE" >> $GITHUB_ENV
+          COMMIT_HASH=$(git show -s --date=short --format="hash: %H")
+          echo "COMMIT_HASH=$COMMIT_HASH" >> $GITHUB_ENV
+          cd ..
 
       - name: 运行自定义脚本1
         run: |
-          chmod +x $CUSTOM_SCRIPT_1
+          chmod +x $GITHUB_WORKSPACE/$CUSTOM_SCRIPT_1
           cd openwrt/
           $GITHUB_WORKSPACE/$CUSTOM_SCRIPT_1
 
@@ -150,7 +159,7 @@ jobs:
 
       - name: 运行自定义脚本2
         run: |
-          chmod +x $CUSTOM_SCRIPT_2
+          chmod +x $GITHUB_WORKSPACE/$CUSTOM_SCRIPT_2
           cd openwrt/
           $GITHUB_WORKSPACE/$CUSTOM_SCRIPT_2
 
