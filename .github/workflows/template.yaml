@@ -83,9 +83,6 @@ jobs:
     if: needs.check.outputs.cache-hit != 'true' || github.event.inputs.force-build == 'true'
 
     steps:
-      - name: 检出代码
-        uses: actions/checkout@main
-
       #      - name: 释放磁盘空间
       #        uses: jlumbroso/free-disk-space@main
       #        with:
@@ -122,6 +119,9 @@ jobs:
       #          sudo -E apt-get install -y clang
       #          sudo timedatectl set-timezone $TIME_ZONE
 
+      - name: 检出代码
+        uses: actions/checkout@main
+
       - name: 克隆源代码
         run: |
           df -hT $PWD
@@ -148,11 +148,9 @@ jobs:
 
       - name: 运行自定义脚本1
         run: |
-          echo "OPENWRT_PATH=$PWD"
-          echo "$CUSTOM_SCRIPT_1"
-          chmod +x $CUSTOM_SCRIPT_1
+          chmod +x $GITHUB_WORKSPACE/$CUSTOM_SCRIPT_1
           cd openwrt/
-          $CUSTOM_SCRIPT_1
+          $GITHUB_WORKSPACE/$CUSTOM_SCRIPT_1
 
       - name: 更新 feeds
         run: cd openwrt/ && ./scripts/feeds update -a
