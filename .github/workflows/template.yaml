@@ -143,11 +143,10 @@ jobs:
       - name: 运行自定义脚本1
         run: |
           echo "OPENWRT_PATH=$PWD"
-          echo "$GITHUB_WORKSPACE/$CUSTOM_SCRIPT_1"
-          echo "ls"
-          chmod +x $GITHUB_WORKSPACE/$CUSTOM_SCRIPT_1
+          echo "$CUSTOM_SCRIPT_1"
+          chmod +x $CUSTOM_SCRIPT_1
           cd openwrt/
-          $GITHUB_WORKSPACE/$CUSTOM_SCRIPT_1
+          $CUSTOM_SCRIPT_1
 
       - name: 更新 feeds
         run: cd openwrt/ && ./scripts/feeds update -a
