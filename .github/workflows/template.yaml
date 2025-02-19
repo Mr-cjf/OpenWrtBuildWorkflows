@@ -125,6 +125,7 @@ jobs:
           sudo -E apt-get install -y clang
           sudo timedatectl set-timezone $TIME_ZONE
 
+
       - name: 检出代码
         uses: actions/checkout@main
 
@@ -145,11 +146,13 @@ jobs:
           COMMIT_HASH=$(git show -s --date=short --format="hash: %H")
           echo "COMMIT_HASH=$COMMIT_HASH" >> $GITHUB_ENV
 
+
       - name: 运行自定义脚本1
         run: |
           chmod +x $GITHUB_WORKSPACE/$CUSTOM_SCRIPT_1
           cd openwrt/
           $GITHUB_WORKSPACE/$CUSTOM_SCRIPT_1
+
 
       - name: 更新 feeds
         run: cd openwrt/ && ./scripts/feeds update -a
@@ -170,11 +173,13 @@ jobs:
           DEVICE_SUBTARGET=$(cat .config | grep CONFIG_TARGET_SUBTARGET | awk -F '"' '{print $2}')
           echo "DEVICE_SUBTARGET=$DEVICE_SUBTARGET" >> $GITHUB_ENV
           sed -i "s/192.168.1.1/$github.event.inputs.ip/g" package/base-files/files/bin/config_generate
+
       - name: 运行自定义脚本2
         run: |
           chmod +x $GITHUB_WORKSPACE/$CUSTOM_SCRIPT_2
           cd openwrt/
           $GITHUB_WORKSPACE/$CUSTOM_SCRIPT_2
+
 
       - name: SSH 连接到 Actions
         uses: P3TERX/ssh2actions@main
@@ -192,6 +197,7 @@ jobs:
           find dl -size -1024c -exec ls -l {} \;
           find dl -size -1024c -exec rm -f {} \;
 
+
       - name: 编译固件
         id: compile
         run: |
@@ -203,6 +209,7 @@ jobs:
           [ -s DEVICE_NAME ] && echo "DEVICE_NAME=_$(cat DEVICE_NAME)" >> $GITHUB_ENV
           echo "DATE=$(date +"%Y-%m-%d %H:%M:%S")" >> $GITHUB_ENV
           echo "FILE_DATE=_$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
+
 
       - name: 检查空间使用情况
         if: (!cancelled())
@@ -223,6 +230,7 @@ jobs:
           echo "FIRMWARE=$PWD" >> $GITHUB_ENV
           echo "status=success" >> $GITHUB_OUTPUT
 
+
       - name: 上传固件目录
         uses: actions/upload-artifact@main
         if: steps.organize-files.outputs.status == 'success' && env.STORE_FIRMWARE == 'true' && !cancelled()
@@ -239,6 +247,7 @@ jobs:
           echo "::notice file=cowtransfer.com::$(cat cowtransfer.log | grep https)"
           echo "url=$(cat cowtransfer.log | grep https | cut -f3 -d" ")" >> $GITHUB_OUTPUT
 
+
       - name: 上传固件到 WeTransfer
         id: wetransfer
         if: steps.organize-files.outputs.status == 'success' && env.WETRANSFER_FIRMWARE == 'true' && !cancelled()
@@ -247,6 +256,7 @@ jobs:
           ./transfer wet -s -p 16 --no-progress ${FIRMWARE} 2>&1 | tee wetransfer.log
           echo "::notice file=wetransfer.com::$(cat wetransfer.log | grep https)"
           echo "url=$(cat wetransfer.log | grep https | cut -f3 -d" ")" >> $GITHUB_OUTPUT
+
 
       - name: 上传固件到Release
         if: steps.organize-files.outputs.status == 'success' && !cancelled()
@@ -271,6 +281,7 @@ jobs:
             - ${{ env.COMMIT_DATE }}
             - ${{ env.COMMIT_MESSAGE }}
             - ${{ env.COMMIT_HASH }}
+
 
   clean:
     name: 清理旧资产
