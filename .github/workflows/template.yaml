@@ -29,7 +29,7 @@ env:
   # 你可以修改 REPO_NAME 为你想要的任何名称，但请确保它与其他工作流中的名称不同。
   REPO_NAME: openwrt
   REPO_URL: https://github.com/openwrt/openwrt.git
-  REPO_BRANCH: openwrt-24.10
+  REPO_BRANCH: v24.10.0
   BUILD_DEPENDS: "libncurses-dev gawk flex quilt libssl-dev rsync \
     zlib1g-dev unzip time bc bison gcc-multilib g++-multilib \
     gettext texinfo u-boot-tools cpio dosfstools kmod \
@@ -172,8 +172,7 @@ jobs:
           echo "DEVICE_TARGET=$DEVICE_TARGET" >> $GITHUB_ENV
           DEVICE_SUBTARGET=$(cat .config | grep CONFIG_TARGET_SUBTARGET | awk -F '"' '{print $2}')
           echo "DEVICE_SUBTARGET=$DEVICE_SUBTARGET" >> $GITHUB_ENV
-          sed -i "s/192.168.1.1/$github.event.inputs.ip/g" package/base-files/files/bin/config_generate
-
+          sed -i "s/192.168.1.1/${{ github.event.inputs.ip }}/g" package/base-files/files/bin/config_generate
       - name: 运行自定义脚本2
         run: |
           chmod +x $GITHUB_WORKSPACE/$CUSTOM_SCRIPT_2
