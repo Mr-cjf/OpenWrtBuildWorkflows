@@ -16,5 +16,5 @@
 #补丁内容
 #EOF
 #git apply example.patch
-ln -s files/bin/openwrtTool.sh files/bin/openwrtTool
+ln -s /bin/openwrtTool.sh files/bin/openwrtTool
 chmod +x files/bin/openwrtTool.sh
