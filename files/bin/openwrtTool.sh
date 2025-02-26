@@ -181,10 +181,9 @@ while true; do
       opkg install ca-certificates
       # 确保 wget 已经安装
       opkg install wget
-      cd /tmp || { echo "无法切换到 /tmp 目录"; exit 1; }
-      wget https://github.com/linkease/openwrt-app-actions/raw/main/applications/luci-app-systools/root/usr/share/systools/istore-reinstall.run
-      chmod 755 istore-reinstall.run
-      ./istore-reinstall.run
+      wget --no-check-certificate /tmp/istore-reinstall.run https://github.com/linkease/openwrt-app-actions/raw/main/applications/luci-app-systools/root/usr/share/systools/istore-reinstall.run
+      chmod 755 /tmp/istore-reinstall.run
+      ./tmp/istore-reinstall.run
       echo "istore安装完成。"
       ;;
     5)
@@ -193,10 +192,10 @@ while true; do
       opkg install luci-lua-runtime  # 新增安装 luci-lua-runtime
       opkg install luci-compat
       opkg install luci-lib-ipkg
-      wget --no-check-certificate -O luci-theme-argon_2.3.2-r20250207_all.ipk https://github.com/jerrykuku/luci-theme-argon/releases/download/v2.3.2/luci-theme-argon_2.3.2-r20250207_all.ipk
-      opkg install luci-theme-argon_2.3.2-r20250207_all.ipk
-      wget --no-check-certificate -O luci-app-argon-config_0.9_all.ipk https://github.com/jerrykuku/luci-app-argon-config/releases/download/v0.9/luci-app-argon-config_0.9_all.ipk
-      opkg install luci-app-argon-config_0.9_all.ipk
+      wget --no-check-certificate -O /tmp/luci-theme-argon_2.3.2-r20250207_all.ipk https://github.com/jerrykuku/luci-theme-argon/releases/download/v2.3.2/luci-theme-argon_2.3.2-r20250207_all.ipk
+      opkg install /tmp/luci-theme-argon_2.3.2-r20250207_all.ipk
+      wget --no-check-certificate -O /tmp/luci-app-argon-config_0.9_all.ipk https://github.com/jerrykuku/luci-app-argon-config/releases/download/v0.9/luci-app-argon-config_0.9_all.ipk
+      opkg install /tmp/luci-app-argon-config_0.9_all.ipk
       echo "主题Argon安装完成。"
       ;;
     *)
