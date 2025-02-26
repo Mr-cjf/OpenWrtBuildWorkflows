@@ -33,7 +33,7 @@ env:
   BUILD_DEPENDS: "libncurses-dev gawk flex quilt libssl-dev rsync \
     zlib1g-dev unzip time bc bison gcc-multilib g++-multilib \
     gettext texinfo u-boot-tools cpio dosfstools kmod \
-    libelf-dev libssl-dev pkg-config device-tree-compiler"
+    libelf-dev libssl-dev pkg-config device-tree-compiler protobuf-c-compiler libprotobuf-c-dev"
   # CONFIG_FILE 是你自己的编译配置文件的名称，你应该将这些文件上传到工作流仓库的根目录。
   CONFIG_FILE: example.config
   # CUSTOM_SCRIPT_1 是你在更新和安装 feeds 之前要执行的额外 Bash 脚本的名称。
