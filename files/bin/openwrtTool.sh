@@ -181,7 +181,7 @@ while true; do
       opkg install ca-certificates
       # 确保 wget 已经安装
       opkg install wget
-      wget --no-check-certificate /tmp/istore-reinstall.run https://github.com/linkease/openwrt-app-actions/raw/main/applications/luci-app-systools/root/usr/share/systools/istore-reinstall.run
+      wget --no-check-certificate -O /tmp/istore-reinstall.run https://github.com/linkease/openwrt-app-actions/raw/main/applications/luci-app-systools/root/usr/share/systools/istore-reinstall.run
       chmod 755 /tmp/istore-reinstall.run
       ./tmp/istore-reinstall.run
       echo "istore安装完成。"
