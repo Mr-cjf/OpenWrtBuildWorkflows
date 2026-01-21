@@ -29,7 +29,7 @@ env:
   # 你可以修改 REPO_NAME 为你想要的任何名称，但请确保它与其他工作流中的名称不同。
   REPO_NAME: openwrt
   REPO_URL: https://github.com/openwrt/openwrt.git
-  REPO_BRANCH: v24.10.0
+  REPO_BRANCH: v24.10.0  # 默认版本，将被自动获取的最新版本覆盖
   BUILD_DEPENDS: "libncurses-dev gawk flex quilt libssl-dev rsync \
     zlib1g-dev unzip time bc bison gcc-multilib g++-multilib \
     gettext texinfo u-boot-tools cpio dosfstools kmod \
@@ -59,26 +59,47 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       cache-hit: ${{ steps.cache-hash.outputs.cache-hit }}
+      latest-version: ${{ steps.get-latest-version.outputs.latest-version }}
 
     steps:
+      - name: 获取最新版本
+        id: get-latest-version
+        run: |
+          # 获取 OpenWrt 仓库的最新稳定版本 tag
+          LATEST_VERSION=$(curl -s "https://api.github.com/repos/openwrt/openwrt/tags" | \
+            grep '"name"' | \
+            grep -oP 'v\d+\.\d+\.\d+' | \
+            head -n 1)
+          
+          # 如果获取失败，使用默认版本
+          if [ -z "$LATEST_VERSION" ]; then
+            LATEST_VERSION="$REPO_BRANCH"
+            echo "⚠️ 无法获取最新版本，使用默认版本: $LATEST_VERSION"
+          else
+            echo "✅ 检测到最新版本: $LATEST_VERSION"
+          fi
+          
+          echo "latest-version=$LATEST_VERSION" >> $GITHUB_OUTPUT
+
       - name: 获取提交哈希
         id: get-hash
         run: |
-          git clone --depth 1 --branch $REPO_BRANCH --single-branch $REPO_URL ./
+          BRANCH_TO_USE="${{ steps.get-latest-version.outputs.latest-version }}"
+          git clone --depth 1 --branch $BRANCH_TO_USE --single-branch $REPO_URL ./
           echo "commit-hash=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
 
       - name: 比较提交哈希
         id: cache-hash
         uses: actions/cache@main
         with:
-          path: .${{ env.REPO_NAME }}-${{ env.REPO_BRANCH }}-commit-hash
+          path: .${{ env.REPO_NAME }}-${{ steps.get-latest-version.outputs.latest-version }}-commit-hash
           key: HEAD-${{ steps.get-hash.outputs.commit-hash }}
 
       - name: 保存新的提交哈希
         if: steps.cache-hash.outputs.cache-hit != 'true'
         run: |
           echo ${{ steps.get-hash.outputs.commit-hash }} | 
-            tee .$REPO_NAME-$REPO_BRANCH-commit-hash
+            tee .$REPO_NAME-${{ steps.get-latest-version.outputs.latest-version }}-commit-hash
 
   build:
     name: 构建固件
@@ -132,10 +153,10 @@ jobs:
       - name: 克隆源代码
         run: |
           df -hT $PWD
-          git clone --depth 1 --branch $REPO_BRANCH --single-branch $REPO_URL openwrt
+          BRANCH_TO_USE="${{ needs.check.outputs.latest-version }}"
+          echo "🚀 使用版本: $BRANCH_TO_USE"
+          git clone --depth 1 --branch $BRANCH_TO_USE --single-branch $REPO_URL openwrt
           cd openwrt
-          echo "OPENWRT_PATH=$PWD" >> $GITHUB_ENV
-          COMMIT_AUTHOR=$(git show -s --date=short --format="作者: %an")
           echo "OPENWRT_PATH=$PWD" >> $GITHUB_ENV
           COMMIT_AUTHOR=$(git show -s --date=short --format="作者: %an")
           echo "COMMIT_AUTHOR=$COMMIT_AUTHOR" >> $GITHUB_ENV
@@ -145,6 +166,8 @@ jobs:
           echo "COMMIT_MESSAGE=$COMMIT_MESSAGE" >> $GITHUB_ENV
           COMMIT_HASH=$(git show -s --date=short --format="hash: %H")
           echo "COMMIT_HASH=$COMMIT_HASH" >> $GITHUB_ENV
+          VERSION_INFO="${{ needs.check.outputs.latest-version }}"
+          echo "VERSION_INFO=$VERSION_INFO" >> $GITHUB_ENV
 
 
       - name: 运行自定义脚本1
@@ -271,7 +294,7 @@ jobs:
             ### 📒 固件信息
             - 💻 平台架构: ${{ env.DEVICE_TARGET }}-${{ env.DEVICE_SUBTARGET }}
             - ⚽ 固件源码: ${{ env.REPO_URL }}
-            - 💝 源码分支: ${{ env.REPO_BRANCH }}
+            - 💝 源码版本: ${{ env.VERSION_INFO }} (自动获取最新版本)
             - 🚀 内核版本: ${{ env.KERNEL }}
             - 🌐 默认地址: ${{ github.event.inputs.ip }}
             ### 🧊 固件版本
