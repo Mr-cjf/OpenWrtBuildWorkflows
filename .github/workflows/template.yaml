@@ -8,8 +8,8 @@ on:
     inputs:
       force-build:
         description: "无论如何构建新固件"
-        required: false
-        default: "false"
+        required: true
+        default: "true"
       ssh:
         description: "连接到Actions的SSH-例如你可以自己构建固件"
         required: false
