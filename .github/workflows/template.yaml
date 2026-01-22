@@ -210,19 +210,34 @@ jobs:
 
       - name: 加载自定义配置
         run: |
-          [ -e files ] && mv $GITHUB_WORKSPACE/files/ openwrt/files/
-          [ -e $CONFIG_FILE ] && mv $GITHUB_WORKSPACE/$CONFIG_FILE openwrt/.config
+          [ -e files ] && mv "$GITHUB_WORKSPACE/files/" openwrt/files/
+          [ -e "$CONFIG_FILE" ] && mv "$GITHUB_WORKSPACE/$CONFIG_FILE" openwrt/.config
           cd openwrt/
           # 开启 ccache 提速
           echo "CONFIG_CCACHE=y" >> .config
           make defconfig > /dev/null 2>&1
-          SOURCE_REPO="$(echo $REPO_URL | awk -F '/' '{print $(NF)}')"
-          echo "SOURCE_REPO=$SOURCE_REPO" >> $GITHUB_ENV
-          DEVICE_TARGET=$(cat .config | grep CONFIG_TARGET_BOARD | awk -F '"' '{print $2}')
-          echo "DEVICE_TARGET=$DEVICE_TARGET" >> $GITHUB_ENV
-          DEVICE_SUBTARGET=$(cat .config | grep CONFIG_TARGET_SUBTARGET | awk -F '"' '{print $2}')
-          echo "DEVICE_SUBTARGET=$DEVICE_SUBTARGET" >> $GITHUB_ENV
-          sed -i "s/192.168.1.1/${{ github.event.inputs.ip }}/g" package/base-files/files/bin/config_generate
+          SOURCE_REPO="$(echo "$REPO_URL" | awk -F '/' '{print $(NF)}')"
+          echo "SOURCE_REPO=$SOURCE_REPO" >> "$GITHUB_ENV"
+          DEVICE_TARGET=$(grep CONFIG_TARGET_BOARD .config | awk -F '"' '{print $2}')
+          echo "DEVICE_TARGET=$DEVICE_TARGET" >> "$GITHUB_ENV"
+          DEVICE_SUBTARGET=$(grep CONFIG_TARGET_SUBTARGET .config | awk -F '"' '{print $2}')
+          echo "DEVICE_SUBTARGET=$DEVICE_SUBTARGET" >> "$GITHUB_ENV"
+          
+          # 修改默认IP地址 - 检查多个可能的路径
+          CONFIG_GENERATE_PATH=""
+          if [ -f "package/base-files/files/bin/config_generate" ]; then
+            CONFIG_GENERATE_PATH="package/base-files/files/bin/config_generate"
+          elif [ -f "package/base-files/root/bin/config_generate" ]; then
+            CONFIG_GENERATE_PATH="package/base-files/root/bin/config_generate"
+          fi
+          
+          if [ -n "$CONFIG_GENERATE_PATH" ]; then
+            echo "✅ 找到 config_generate: $CONFIG_GENERATE_PATH"
+            sed -i "s/192.168.1.1/${{ github.event.inputs.ip }}/g" "$CONFIG_GENERATE_PATH"
+            echo "✅ 已将默认IP修改为 ${{ github.event.inputs.ip }}"
+          else
+            echo "⚠️ 警告: 未找到 config_generate 文件,跳过IP地址修改"
+          fi
       - name: 运行自定义脚本2
         run: |
           chmod +x $GITHUB_WORKSPACE/$CUSTOM_SCRIPT_2
