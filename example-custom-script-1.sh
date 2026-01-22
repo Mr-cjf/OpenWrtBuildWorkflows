@@ -40,13 +40,13 @@ fi
 echo "🚀 自动配置 Feed 分支为: $FEED_BRANCH"
 
 # === 动态更新软件源 ===
+# 注意：core 和 base 通常在源码主仓库中，不需要在 feeds.conf.default 中重复定义
+# 除非您有特殊的软件源需求。
 cat <<EOF > feeds.conf.default
 src-git packages https://git.openwrt.org/feed/packages.git;$FEED_BRANCH
 src-git luci https://git.openwrt.org/project/luci.git;$FEED_BRANCH
 src-git routing https://git.openwrt.org/feed/routing.git;$FEED_BRANCH
 src-git telephony https://git.openwrt.org/feed/telephony.git;$FEED_BRANCH
-src-git core https://git.openwrt.org/openwrt/openwrt.git;$FEED_BRANCH
-src-git base https://git.openwrt.org/openwrt/openwrt.git;$FEED_BRANCH
 EOF
 # 提示：这里直接使用了 src-git 以提高克隆速度
 
