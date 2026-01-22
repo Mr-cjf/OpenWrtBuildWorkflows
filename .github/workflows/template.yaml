@@ -203,10 +203,21 @@ jobs:
 
 
       - name: 更新 feeds
-        run: cd openwrt/ && ./scripts/feeds update -a
+        run: |
+          cd openwrt/
+          echo "🚀 正在更新软件源..."
+          ./scripts/feeds update -a
+          echo "✅ 软件源更新完成"
 
       - name: 安装 feeds
-        run: cd openwrt/ && ./scripts/feeds install -a
+        run: |
+          cd openwrt/
+          echo "🚀 正在安装软件包..."
+          ./scripts/feeds install -a
+          echo "✅ 软件包安装完成"
+          echo "--- 已安装的软件源目录列表 ---"
+          ls -d feeds/* 2>/dev/null || echo "⚠️ 未发现 feeds 目录"
+          echo "----------------------------"
 
       - name: 加载自定义配置
         run: |
