@@ -210,17 +210,42 @@ jobs:
 
       - name: 加载自定义配置
         run: |
-          [ -e files ] && mv "$GITHUB_WORKSPACE/files/" openwrt/files/
-          [ -e "$CONFIG_FILE" ] && mv "$GITHUB_WORKSPACE/$CONFIG_FILE" openwrt/.config
+          # 确保目标目录存在
+          mkdir -p openwrt/files
+          
+          # 使用 cp -r 替代 mv，更安全且支持合并
+          if [ -d "files" ]; then
+            echo "🚚 复制自定义 files 目录..."
+            cp -r files/* openwrt/files/
+          fi
+          
+          # 复制配置文件
+          if [ -f "$CONFIG_FILE" ]; then
+            echo "🚚 使用自定义配置文件: $CONFIG_FILE"
+            cp "$CONFIG_FILE" openwrt/.config
+          fi
+          
           cd openwrt/
           # 开启 ccache 提速
           echo "CONFIG_CCACHE=y" >> .config
-          make defconfig > /dev/null 2>&1
+          
+          # 运行 make defconfig，不重定向输出以便排查错误
+          echo "🚀 运行 make defconfig..."
+          make defconfig
+          
+          # 检查 .config 是否生成成功
+          if [ ! -f ".config" ]; then
+            echo "❌ 错误: .config 文件未生成！"
+            exit 1
+          fi
+          
           SOURCE_REPO="$(echo "$REPO_URL" | awk -F '/' '{print $(NF)}')"
           echo "SOURCE_REPO=$SOURCE_REPO" >> "$GITHUB_ENV"
-          DEVICE_TARGET=$(grep CONFIG_TARGET_BOARD .config | awk -F '"' '{print $2}')
+          
+          # 提取设备信息，增加默认值防止 grep 失败退出
+          DEVICE_TARGET=$(grep CONFIG_TARGET_BOARD .config | awk -F '"' '{print $2}' || echo "unknown")
           echo "DEVICE_TARGET=$DEVICE_TARGET" >> "$GITHUB_ENV"
-          DEVICE_SUBTARGET=$(grep CONFIG_TARGET_SUBTARGET .config | awk -F '"' '{print $2}')
+          DEVICE_SUBTARGET=$(grep CONFIG_TARGET_SUBTARGET .config | awk -F '"' '{print $2}' || echo "unknown")
           echo "DEVICE_SUBTARGET=$DEVICE_SUBTARGET" >> "$GITHUB_ENV"
           
           # 修改默认IP地址 - 检查多个可能的路径
@@ -233,10 +258,11 @@ jobs:
           
           if [ -n "$CONFIG_GENERATE_PATH" ]; then
             echo "✅ 找到 config_generate: $CONFIG_GENERATE_PATH"
+            # 使用更健壮的 sed 替换，避免路径中有特殊字符
             sed -i "s/192.168.1.1/${{ github.event.inputs.ip }}/g" "$CONFIG_GENERATE_PATH"
             echo "✅ 已将默认IP修改为 ${{ github.event.inputs.ip }}"
           else
-            echo "⚠️ 警告: 未找到 config_generate 文件,跳过IP地址修改"
+            echo "⚠️ 警告: 未找到 config_generate 文件，跳过IP地址修改"
           fi
       - name: 运行自定义脚本2
         run: |
