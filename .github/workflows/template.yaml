@@ -172,16 +172,27 @@ jobs:
           git clone --depth 1 --branch $BRANCH_TO_USE --single-branch $REPO_URL openwrt
           cd openwrt
           echo "OPENWRT_PATH=$PWD" >> $GITHUB_ENV
-          COMMIT_AUTHOR=$(git show -s --date=short --format="作者: %an")
-          echo "COMMIT_AUTHOR=$COMMIT_AUTHOR" >> $GITHUB_ENV
-          COMMIT_DATE=$(git show -s --date=short --format="时间: %ci")
-          echo "COMMIT_DATE=$COMMIT_DATE" >> $GITHUB_ENV
-          COMMIT_MESSAGE=$(git show -s --date=short --format="内容: %s")
-          echo "COMMIT_MESSAGE=$COMMIT_MESSAGE" >> $GITHUB_ENV
-          COMMIT_HASH=$(git show -s --date=short --format="hash: %H")
-          echo "COMMIT_HASH=$COMMIT_HASH" >> $GITHUB_ENV
-          VERSION_INFO="${{ needs.check.outputs.latest-version }}"
-          echo "VERSION_INFO=$VERSION_INFO" >> $GITHUB_ENV
+
+      - name: 缓存编译产物
+        uses: actions/cache@v4
+        with:
+          path: |
+            openwrt/dl
+            openwrt/staging_dir/host
+            openwrt/staging_dir/toolchain
+            openwrt/.ccache
+          key: ${{ runner.os }}-openwrt-${{ env.REPO_NAME }}-${{ needs.check.outputs.latest-version }}-${{ hashFiles('example.config') }}
+          restore-keys: |
+            ${{ runner.os }}-openwrt-${{ env.REPO_NAME }}-${{ needs.check.outputs.latest-version }}-
+
+      - name: 注入提交信息
+        run: |
+          cd openwrt
+          echo "COMMIT_AUTHOR=$(git show -s --date=short --format="作者: %an")" >> $GITHUB_ENV
+          echo "COMMIT_DATE=$(git show -s --date=short --format="时间: %ci")" >> $GITHUB_ENV
+          echo "COMMIT_MESSAGE=$(git show -s --date=short --format="内容: %s")" >> $GITHUB_ENV
+          echo "COMMIT_HASH=$(git show -s --date=short --format="hash: %H")" >> $GITHUB_ENV
+          echo "VERSION_INFO=${{ needs.check.outputs.latest-version }}" >> $GITHUB_ENV
 
 
       - name: 运行自定义脚本1
@@ -202,6 +213,8 @@ jobs:
           [ -e files ] && mv $GITHUB_WORKSPACE/files/ openwrt/files/
           [ -e $CONFIG_FILE ] && mv $GITHUB_WORKSPACE/$CONFIG_FILE openwrt/.config
           cd openwrt/
+          # 开启 ccache 提速
+          echo "CONFIG_CCACHE=y" >> .config
           make defconfig > /dev/null 2>&1
           SOURCE_REPO="$(echo $REPO_URL | awk -F '/' '{print $(NF)}')"
           echo "SOURCE_REPO=$SOURCE_REPO" >> $GITHUB_ENV
@@ -238,8 +251,8 @@ jobs:
         id: compile
         run: |
           cd openwrt/
-          echo -e "$(nproc) thread compile"
-          make -j$(nproc) || make -j1 || make -j1 V=s
+          echo -e "🚀 开始编译，使用线程数: $(($(nproc) + 1))"
+          make -j$(($(nproc) + 1)) || make -j1 V=s
           echo "status=success" >> $GITHUB_OUTPUT
           grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' > DEVICE_NAME
           [ -s DEVICE_NAME ] && echo "DEVICE_NAME=_$(cat DEVICE_NAME)" >> $GITHUB_ENV
