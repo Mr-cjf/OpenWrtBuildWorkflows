@@ -209,14 +209,26 @@ jobs:
         run: |
           cd openwrt/
           echo "🚀 正在更新软件源..."
-          ./scripts/feeds update -a
+          if ! ./scripts/feeds update -a; then
+            echo "❌ 更新软件源失败，显示错误日志:"
+            find logs/ -name "*.txt" -exec echo "=== {} ===" \; -exec cat {} \;
+            exit 1
+          fi
           echo "✅ 软件源更新完成"
 
       - name: 安装 feeds
         run: |
           cd openwrt/
           echo "🚀 正在安装软件包..."
-          ./scripts/feeds install -a
+          if ! ./scripts/feeds install -a; then
+            echo "❌ 安装软件包失败，显示错误日志:"
+            find logs/ -name "*.txt" -exec echo "=== {} ===" \; -exec cat {} \;
+            echo "--- 检查 feeds 目录结构 ---"
+            ls -la feeds/
+            echo "--- 检查 .config 文件内容 ---"
+            cat .config | head -20
+            exit 1
+          fi
           echo "✅ 软件包安装完成"
           echo "--- 已安装的软件源目录列表 ---"
           ls -d feeds/* 2>/dev/null || echo "⚠️ 未发现 feeds 目录"
