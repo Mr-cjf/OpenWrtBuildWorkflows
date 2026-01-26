@@ -209,11 +209,55 @@ jobs:
         run: |
           cd openwrt/
           echo "🚀 正在更新软件源..."
-          if ! ./scripts/feeds update -a; then
-            echo "❌ 更新软件源失败，显示错误日志:"
-            find logs/ -name "*.txt" -exec echo "=== {} ===" \; -exec cat {} \;
+          
+          # 尝试多次更新 feeds，因为网络可能不稳定
+          attempt=1
+          max_attempts=3
+          
+          while [ $attempt -le $max_attempts ]; do
+            echo "🔄 第 $attempt 次尝试更新软件源..."
+            
+            # 首先备份 feeds 配置
+            cp feeds.conf.default feeds.conf
+            
+            # 如果使用的是中国大陆用户，替换为镜像源
+            if [ "$TIME_ZONE" = "Asia/Shanghai" ]; then
+              echo "🌐 检测到中国时区，使用镜像源..."
+              sed -i 's|https://git.openwrt.org/feed/packages.git|https://mirrors.ustc.edu.cn/openwrt-feeds/packages.git|g' feeds.conf
+              sed -i 's|https://git.openwrt.org/project/luci.git|https://mirrors.ustc.edu.cn/openwrt-luci.git|g' feeds.conf
+              sed -i 's|https://git.openwrt.org/feed/routing.git|https://mirrors.ustc.edu.cn/openwrt-feeds/routing.git|g' feeds.conf
+              sed -i 's|https://git.openwrt.org/feed/telephony.git|https://mirrors.ustc.edu.cn/openwrt-feeds/telephony.git|g' feeds.conf
+            fi
+            
+            # 更新软件源
+            if ./scripts/feeds update -a; then
+              echo "✅ 软件源更新成功"
+              
+              # 检查是否有任何软件源更新成功
+              if [ -d "feeds/packages" ] || [ -d "feeds/luci" ] || [ -d "feeds/routing" ] || [ -d "feeds/telephony" ]; then
+                echo "✅ 至少有一个软件源更新成功"
+                break
+              else
+                echo "⚠️ 警告: 没有任何软件源目录被创建，但命令返回成功"
+              fi
+            else
+              echo "❌ 第 $attempt 次尝试失败"
+            fi
+            
+            if [ $attempt -lt $max_attempts ]; then
+              echo "⏳ 等待 30 秒后重试..."
+              sleep 30
+            fi
+            
+            attempt=$((attempt + 1))
+          done
+          
+          if [ $attempt -gt $max_attempts ]; then
+            echo "💥 所有尝试都失败了，显示错误日志:"
+            find logs/ -name "*.txt" -exec echo "=== {} ===" \; -exec cat {} \; 2>/dev/null || echo "没有找到错误日志"
             exit 1
           fi
+          
           echo "✅ 软件源更新完成"
 
       - name: 安装 feeds
