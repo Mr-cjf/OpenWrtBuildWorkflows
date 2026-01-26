@@ -23,6 +23,9 @@ on:
         required: true  # 如果你希望这是必填项
         type: string
         default: "192.168.1.77"  # 可选，默认 IP 地址
+  push:
+    branches:
+      - main
 # 取消注释以下内容以定期运行。注意这里的 cron 表达式不包含秒。
 #  schedule:
 #    - cron: 0 */18 * * *
