@@ -14,19 +14,42 @@
 #
 # 例如，您可以编辑 feeds.conf.default 以引入您需要的包。
 # 以下是编辑示例。
-# # 清除 feeds.conf.default 并逐个添加所需的源：
-#cat /dev/null > a.txt
-#echo 'src-git-full packages https://git.openwrt.org/feed/packages.git;openwrt-22.03' >> feeds.conf.default
-#echo 'src-git-full luci https://git.openwrt.org/project/luci.git;openwrt-22.03' >> feeds.conf.default
-#echo 'src-git-full routing https://git.openwrt.org/feed/routing.git;openwrt-22.03' >> feeds.conf.default
-#echo 'src-git-full telephony https://git.openwrt.org/feed/telephony.git;openwrt-22.03' >> feeds.conf.default
-# # 替换一个源：
-#sed '/feeds-name/'d feeds.conf.default
-#echo 'method feed-name path/URL' >> feeds.conf.default
-# # 取消注释一个源：
-#sed -i 's/^#\(.*feed-name\)/\1/' feeds.conf.default
-# # 将 src-git-full 替换为 src-git 以减少克隆深度：
-#sed -i 's/src-git-full/src-git/g' feeds.conf.default
+# === 全自动识别版本逻辑 ===
+# 优先从环境变量获取，如果没有，则尝试从源码目录识别
+if [ -n "$VERSION_INFO" ]; then
+    VERSION_STR="$VERSION_INFO"
+    echo "📌 从环境变量识别到版本: $VERSION_STR"
+elif [ -f "include/version.mk" ]; then
+    # 从源码配置文件中提取主版本号
+    VERSION_STR=$(grep "VERSION_NUMBER:=" include/version.mk | cut -d'=' -f2 | tr -d ' ')
+    echo "📌 从源码文件识别到版本: $VERSION_STR"
+else
+    VERSION_STR="master"
+    echo "⚠️ 无法识别版本，默认使用: master"
+fi
+
+# 格式化分支名称 (例如将 v24.10.0 或 24.10.0 转换为 openwrt-24.10)
+if [[ "$VERSION_STR" == "master" ]]; then
+    FEED_BRANCH="master"
+else
+    # 提取前两个数字部分 (例如 24.10)
+    MAJOR_VERSION=$(echo "$VERSION_STR" | grep -oP '\d+\.\d+' | head -1)
+    FEED_BRANCH="openwrt-$MAJOR_VERSION"
+fi
+
+echo "🚀 自动配置 Feed 分支为: $FEED_BRANCH"
+
+# === 动态更新软件源 ===
+# 注意：core 和 base 通常在源码主仓库中，不需要在 feeds.conf.default 中重复定义
+# 除非您有特殊的软件源需求。
+cat <<EOF > feeds.conf.default
+src-git packages https://git.openwrt.org/feed/packages.git;$FEED_BRANCH
+src-git luci https://git.openwrt.org/project/luci.git;$FEED_BRANCH
+src-git routing https://git.openwrt.org/feed/routing.git;$FEED_BRANCH
+src-git telephony https://git.openwrt.org/feed/telephony.git;$FEED_BRANCH
+EOF
+# 提示：这里直接使用了 src-git 以提高克隆速度
+
 #
 # 您还可以通过打补丁来修改源代码。
 # # 以下是一个补丁模板：
