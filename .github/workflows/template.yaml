@@ -220,28 +220,57 @@ jobs:
             # 首先备份 feeds 配置
             cp feeds.conf.default feeds.conf
             
-            # 如果使用的是中国大陆用户，替换为镜像源
-            if [ "$TIME_ZONE" = "Asia/Shanghai" ]; then
-              echo "🌐 检测到中国时区，使用镜像源..."
-              sed -i 's|https://git.openwrt.org/feed/packages.git|https://mirrors.ustc.edu.cn/openwrt-feeds/packages.git|g' feeds.conf
-              sed -i 's|https://git.openwrt.org/project/luci.git|https://mirrors.ustc.edu.cn/openwrt-luci.git|g' feeds.conf
-              sed -i 's|https://git.openwrt.org/feed/routing.git|https://mirrors.ustc.edu.cn/openwrt-feeds/routing.git|g' feeds.conf
-              sed -i 's|https://git.openwrt.org/feed/telephony.git|https://mirrors.ustc.edu.cn/openwrt-feeds/telephony.git|g' feeds.conf
-            fi
-            
-            # 更新软件源
+            # 首先尝试使用原始官方源
+            echo "🌐 尝试使用官方源..."
             if ./scripts/feeds update -a; then
-              echo "✅ 软件源更新成功"
-              
-              # 检查是否有任何软件源更新成功
-              if [ -d "feeds/packages" ] || [ -d "feeds/luci" ] || [ -d "feeds/routing" ] || [ -d "feeds/telephony" ]; then
-                echo "✅ 至少有一个软件源更新成功"
-                break
-              else
-                echo "⚠️ 警告: 没有任何软件源目录被创建，但命令返回成功"
-              fi
+              echo "✅ 使用官方源更新成功"
+              break
             else
-              echo "❌ 第 $attempt 次尝试失败"
+              echo "❌ 官方源更新失败，检查是否为中国用户并尝试镜像源..."
+              
+              # 如果是中国用户且官方源失败，则尝试镜像源
+              if [ "$TIME_ZONE" = "Asia/Shanghai" ]; then
+                # 定义镜像源列表
+                mirror_sources=(
+                  "https://mirrors.ustc.edu.cn"  # 中科大镜像
+                  "https://mirrors.tuna.tsinghua.edu.cn"  # 清华镜像
+                  "https://mirrors.aliyun.com"  # 阿里云镜像
+                )
+                
+                mirror_index=0
+                mirror_count=${#mirror_sources[@]}
+                
+                while [ $mirror_index -lt $mirror_count ]; do
+                  mirror_url="${mirror_sources[$mirror_index]}"
+                  echo "🌐 尝试镜像源: $mirror_url"
+                  
+                  # 恢复 feeds 配置并切换到当前镜像源
+                  cp feeds.conf.default feeds.conf
+                  
+                  # 使用当前镜像源替换
+                  sed -i "s|https://git.openwrt.org/feed/packages.git;\([^[:space:]]*\)|$mirror_url/openwrt-feeds/packages.git;\1|g" feeds.conf
+                  sed -i "s|https://git.openwrt.org/project/luci.git;\([^[:space:]]*\)|$mirror_url/openwrt-luci.git;\1|g" feeds.conf
+                  sed -i "s|https://git.openwrt.org/feed/routing.git;\([^[:space:]]*\)|$mirror_url/openwrt-feeds/routing.git;\1|g" feeds.conf
+                  sed -i "s|https://git.openwrt.org/feed/telephony.git;\([^[:space:]]*\)|$mirror_url/openwrt-feeds/telephony.git;\1|g" feeds.conf
+                  
+                  # 显示当前使用的 feeds 配置
+                  echo "📋 当前使用的 feeds 配置 (镜像源: $mirror_url):"
+                  cat feeds.conf
+                  
+                  # 尝试使用当前镜像源更新
+                  if ./scripts/feeds update -a; then
+                    echo "✅ 使用镜像源 $mirror_url 更新成功"
+                    break 2  # 退出内外两层循环
+                  else
+                    echo "❌ 镜像源 $mirror_url 更新失败，尝试下一个镜像源..."
+                    ((mirror_index++))
+                  fi
+                done
+                
+                echo "💥 所有镜像源都尝试失败"
+              else
+                echo "💡 非中国时区，不切换到镜像源"
+              fi
             fi
             
             if [ $attempt -lt $max_attempts ]; then
