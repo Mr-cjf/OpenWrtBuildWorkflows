@@ -1,4 +1,7 @@
 # GitHub Actions 工作流配置文件
+# 此工作流用于自动编译 OpenWrt 固件，基于 example.config 配置文件
+# example.config 包含了完整的 OpenWrt 配置选项，定义了固件的功能特性
+# 如目标架构、内核版本、预装软件包、网络服务和硬件驱动等
 
 # 工作流名称，显示在 GitHub Actions 中。
 name: openwrt-build固件云编译
@@ -160,7 +163,9 @@ jobs:
       - name: 安装 feeds
         run: cd openwrt/ && ./scripts/feeds install -a
 
-      - name: 加载自定义配置
+      - name: 加载自定义配置并生成配置摘要
+        # 此步骤处理 example.config 配置文件中的各项设置
+        # 并动态生成配置摘要以供后续步骤使用
         run: |
           [ -e files ] && mv $GITHUB_WORKSPACE/files/ openwrt/files/
           [ -e $CONFIG_FILE ] && mv $GITHUB_WORKSPACE/$CONFIG_FILE openwrt/.config
@@ -173,6 +178,13 @@ jobs:
           DEVICE_SUBTARGET=$(cat .config | grep CONFIG_TARGET_SUBTARGET | awk -F '"' '{print $2}')
           echo "DEVICE_SUBTARGET=$DEVICE_SUBTARGET" >> $GITHUB_ENV
           sed -i "s/192.168.1.1/${{ github.event.inputs.ip }}/g" package/base-files/files/bin/config_generate
+          
+          # 生成配置摘要文件
+          echo "## 配置摘要" > ../config_summary.md
+          echo "- 目标架构: $(grep '^CONFIG_TARGET_' .config | grep '=y' | head -5 | tr '\n' ',' | sed 's/,$//')" >> ../config_summary.md
+          echo "- 内核版本: $(grep '^CONFIG_LINUX_' .config | grep '=y' | tr '\n' ',' | sed 's/,$//')" >> ../config_summary.md
+          echo "- 网络服务: $(grep -E '^CONFIG_DEFAULT_(dnsmasq|firewall4|dropbear|ppp|odhcpd)' .config | grep '=y' | sed 's/CONFIG_DEFAULT_//' | sed 's/=y//' | tr '\n' ',' | sed 's/,$//')" >> ../config_summary.md
+          echo "- 网络驱动: $(grep -E '^CONFIG_DEFAULT_kmod-(e1000|igb|r8169|tg3|bnx2|forcedeth)' .config | grep '=y' | sed 's/CONFIG_DEFAULT_//' | sed 's/=y//' | tr '\n' ',' | sed 's/,$//')" >> ../config_summary.md
       - name: 运行自定义脚本2
         run: |
           chmod +x $GITHUB_WORKSPACE/$CUSTOM_SCRIPT_2
@@ -229,6 +241,84 @@ jobs:
           echo "FIRMWARE=$PWD" >> $GITHUB_ENV
           echo "status=success" >> $GITHUB_OUTPUT
 
+      - name: 准备动态配置说明
+        run: |
+          cd openwrt/
+          # 生成完整的发布说明，包含标准信息和动态配置详情
+          {
+          echo "**这是为 ${{ env.DEVICE_TARGET }} 编译的OpenWrt固件**"
+          echo "### 📒 固件信息"
+          echo "- 💻 平台架构: ${{ env.DEVICE_TARGET }}-${{ env.DEVICE_SUBTARGET }}"
+          echo "- ⚽ 固件源码: ${{ env.REPO_URL }}"
+          echo "- 💝 源码分支: ${{ env.REPO_BRANCH }}"
+          echo "- 🚀 内核版本: ${{ env.KERNEL }}"
+          echo "- 🌐 默认地址: ${{ github.event.inputs.ip }}"
+          echo "### 🧊 固件版本"
+          echo "- 固件编译前最后一次➦[主源码](${{ env.REPO_URL }})更新记录"
+          echo "- ${{ env.COMMIT_AUTHOR }}"
+          echo "- ${{ env.COMMIT_DATE }}"
+          echo "- ${{ env.COMMIT_MESSAGE }}"
+          echo "- ${{ env.COMMIT_HASH }}"
+          echo ""
+          echo "### 🔧 实际配置详情"
+          
+          # 提取目标架构信息
+          TARGETS=$(grep '^CONFIG_TARGET_' .config | grep '=y' | head -5 | tr '\n' ', ' | sed 's/, $//')
+          echo "- 目标架构: $TARGETS"
+          
+          # 提取内核版本
+          KERNEL=$(grep '^CONFIG_LINUX_' .config | grep '=y' | tr '\n' ', ' | sed 's/, $//')
+          echo "- 内核版本: $KERNEL"
+          
+          # 提取系统基础包
+          BASE_SYSTEM=$(grep -E '^CONFIG_DEFAULT_(base-files|libc|libgcc|musl|procd|ubus|uci|uclient-fetch|urandom-seed|urngd|fstools|mtd|netifd|swconfig|uboot-envtools|ucron|uhttpd)' .config | grep '=y' | sed 's/CONFIG_DEFAULT_//' | sed 's/=y//' | tr '\n' ', ' | sed 's/, $//')
+          echo "- 基础系统: $BASE_SYSTEM"
+          
+          # 提取网络服务
+          NETWORK=$(grep -E '^CONFIG_DEFAULT_(dnsmasq|firewall4|dropbear|ppp|ppp-mod-pppoe|odhcpd|odhcp6c|firewall|resolveip|kmod-ipt-offload|ca-bundle)' .config | grep '=y' | sed 's/CONFIG_DEFAULT_//' | sed 's/=y//' | tr '\n' ', ' | sed 's/, $//')
+          echo "- 网络服务: $NETWORK"
+          
+          # 提取网络驱动
+          DRIVERS=$(grep -E '^CONFIG_DEFAULT_kmod-(e1000|igb|r8169|tg3|bnx2|forcedeth|ath|mt76|rt|atl1c|ixgbe|igc|kmod-usb-net|kmod-usb-net-asix|kmod-usb-net-rtl8152)' .config | grep '=y' | sed 's/CONFIG_DEFAULT_//' | sed 's/=y//' | tr '\n' ', ' | sed 's/, $//')
+          echo "- 网络驱动: $DRIVERS"
+          
+          # 提取无线网络相关
+          WIFI=$(grep -E '^CONFIG_DEFAULT_(hostapd|wpad-mini|wpad|kmod-cfg80211|kmod-mac80211|kmod-ath9k|kmod-ath10k|kmod-rt2800|kmod-rt73-usb)' .config | grep '=y' | sed 's/CONFIG_DEFAULT_//' | sed 's/=y//' | tr '\n' ', ' | sed 's/, $//')
+          echo "- 无线网络: $WIFI"
+          
+          # 提取存储和文件系统
+          STORAGE=$(grep -E '^CONFIG_DEFAULT_(e2fsprogs|mkf2fs|partx-utils|f2fs-tools|kmod-fs-vfat|kmod-fs-ext4|kmod-fs-ntfs|kmod-usb-storage|kmod-usb-storage-extras|kmod-usb3|kmod-usb2)' .config | grep '=y' | sed 's/CONFIG_DEFAULT_//' | sed 's/=y//' | tr '\n' ', ' | sed 's/, $//')
+          echo "- 存储支持: $STORAGE"
+          
+          # 提取安全功能
+          SECURITY=$(grep -E '^CONFIG_DEFAULT_(firewall4|nftables|kmod-ipt-nat|kmod-nf-nathelper-ct|kmod-tun|kmod-udptunnel6|openvpn|openvpn-easy-rsa)' .config | grep '=y' | sed 's/CONFIG_DEFAULT_//' | sed 's/=y//' | tr '\n' ', ' | sed 's/, $//')
+          echo "- 安全功能: $SECURITY"
+          
+          # 提取容器和虚拟化支持
+          CONTAINER=$(grep -E '^CONFIG_DEFAULT_(docker|dockerd|containerd|runc|lxc|lxc-attach|kmod-virtio|kmod-virtio-blk|kmod-virtio-console|kmod-virtio-net)' .config | grep '=y' | sed 's/CONFIG_DEFAULT_//' | sed 's/=y//' | tr '\n' ', ' | sed 's/, $//')
+          [ -n "$CONTAINER" ] && echo "- 容器支持: $CONTAINER" || echo "- 容器支持: 无"
+          
+          # 提取开发工具
+          DEV_TOOLS=$(grep -E '^CONFIG_DEFAULT_(gcc|gdb|strace|tcpdump|iperf3|screen|tmux|vim-full|nano)' .config | grep '=y' | sed 's/CONFIG_DEFAULT_//' | sed 's/=y//' | tr '\n' ', ' | sed 's/, $//')
+          [ -n "$DEV_TOOLS" ] && echo "- 开发工具: $DEV_TOOLS" || echo "- 开发工具: 无"
+          
+          # 提取LuCI Web界面组件
+          LUCI=$(grep -E '^CONFIG_DEFAULT_(luci|luci-base|luci-mod-admin-full|luci-theme-bootstrap|luci-theme-openwrt-2020|luci-app-firewall|luci-app-opkg|luci-proto-ipv6|luci-proto-ppp)' .config | grep '=y' | sed 's/CONFIG_DEFAULT_//' | sed 's/=y//' | tr '\n' ', ' | sed 's/, $//')
+          [ -n "$LUCI" ] && echo "- LuCI界面: $LUCI" || echo "- LuCI界面: 无"
+          
+          # 提取系统性能和监控
+          MONITORING=$(grep -E '^CONFIG_DEFAULT_(htop|iftop|vnstat|vnstati|iotop|dstat|kmod-ledtrig-heartbeat|kmod-ledtrig-gpio)' .config | grep '=y' | sed 's/CONFIG_DEFAULT_//' | sed 's/=y//' | tr '\n' ', ' | sed 's/, $//')
+          [ -n "$MONITORING" ] && echo "- 性能监控: $MONITORING" || echo "- 性能监控: 无"
+          
+          # 统计总数
+          TOTAL_PKGS=$(grep '^CONFIG_DEFAULT_' .config | grep '=y' | wc -l)
+          TOTAL_DRIVERS=$(grep '^CONFIG_DEFAULT_kmod-' .config | grep '=y' | wc -l)
+          echo ""
+          echo "### 📊 配置统计"
+          echo "- 总计启用软件包: $TOTAL_PKGS 个"
+          echo "- 总计启用驱动: $TOTAL_DRIVERS 个"
+          } > ../dynamic_config_notes.md
+
 
       - name: 上传固件目录
         uses: actions/upload-artifact@main
@@ -266,20 +356,7 @@ jobs:
           tag: ${{ env.DEVICE_TARGET }}
           token: ${{ secrets.GITHUB_TOKEN }}
           artifacts: ${{ env.FIRMWARE }}/*
-          body: |
-            **这是为 ${{ env.DEVICE_TARGET }} 编译的OpenWrt固件**
-            ### 📒 固件信息
-            - 💻 平台架构: ${{ env.DEVICE_TARGET }}-${{ env.DEVICE_SUBTARGET }}
-            - ⚽ 固件源码: ${{ env.REPO_URL }}
-            - 💝 源码分支: ${{ env.REPO_BRANCH }}
-            - 🚀 内核版本: ${{ env.KERNEL }}
-            - 🌐 默认地址: ${{ github.event.inputs.ip }}
-            ### 🧊 固件版本
-            - 固件编译前最后一次➦[主源码](${{ env.REPO_URL }})更新记录
-            - ${{ env.COMMIT_AUTHOR }}
-            - ${{ env.COMMIT_DATE }}
-            - ${{ env.COMMIT_MESSAGE }}
-            - ${{ env.COMMIT_HASH }}
+          bodyFile: dynamic_config_notes.md
 
 
   clean:
