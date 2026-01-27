@@ -623,7 +623,7 @@ jobs:
             - ${{ env.COMMIT_DATE }}
             - ${{ env.COMMIT_MESSAGE }}
             - ${{ env.COMMIT_HASH }}
-          bodyFile: dynamic_config_notes.md
+          bodyFile: ../dynamic_config_notes.md
 
 
   clean:
